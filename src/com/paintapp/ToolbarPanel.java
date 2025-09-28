@@ -6,87 +6,112 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
-public class ToolbarPanel extends Panel {
+public class ToolbarPanel extends Panel implements PaintCanvas.ToolChangeListener {
     private final PaintCanvas canvas;
+    private Panel textPanel; 
+    private static final Color TOOLBAR_BG = new Color(173, 216, 230); 
 
     public ToolbarPanel(PaintCanvas canvas) {
         this.canvas = canvas;
 
-        setLayout(new FlowLayout(FlowLayout.LEFT, 6, 6));
-        setBackground(new Color(240, 240, 240));
+        setLayout(new BorderLayout());
+        setBackground(TOOLBAR_BG); 
         setPreferredSize(new Dimension(Constants.CANVAS_WIDTH, 70));
 
-        // --- Tool buttons
-        for (Tool t : Tool.values()) {
-            Button b = new Button(t.name());
-            Tool tool = t;
-            b.addActionListener(e -> canvas.setTool(tool));
-            add(b);
+        Panel controlsPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 6, 6));
+        controlsPanel.setBackground(TOOLBAR_BG); 
+
+        // --- A. Actions Group ---
+        controlsPanel.add(createButton("New", e -> canvas.newFile()));
+        controlsPanel.add(createButton("Save", e -> handleSave()));
+        controlsPanel.add(createButton("Undo", e -> canvas.undo()));
+        controlsPanel.add(createButton("Redo", e -> canvas.redo()));
+        controlsPanel.add(createButton("Clear", e -> canvas.clearCanvas()));
+        
+        // --- B. Grouped Controls (Stroke, Font, Size) ---
+        controlsPanel.add(createLabeledChoicePanel("Stroke:", Arrays.asList(1, 2, 3, 5, 8, 12, 20), "3", size -> canvas.setStrokeSize(Integer.parseInt(size))));
+        
+        String[] fontNames = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
+        List<String> fontList = Arrays.asList(Arrays.copyOf(fontNames, Math.min(fontNames.length, 10)));
+        controlsPanel.add(createLabeledChoicePanel("Font:", fontList, canvas.getFontName(), canvas::setFontName));
+
+        List<String> fSizeList = new java.util.ArrayList<>();
+        for (int i = 8; i <= 48; i += 2) fSizeList.add(String.valueOf(i));
+        controlsPanel.add(createLabeledChoicePanel("Size:", fSizeList, "24", size -> canvas.setFontSize(Integer.parseInt(size))));
+
+        // --- C. Text Field Group ---
+        textPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        textPanel.add(new Label("Text:"));
+        TextField tf = new TextField("Hello", 8);
+        tf.addTextListener(e -> canvas.setText(tf.getText()));
+        textPanel.add(tf);
+        controlsPanel.add(textPanel);
+        textPanel.setVisible(false); // Hidden by default
+
+        // --- D. Color Swatches ---
+        Panel colorGroupPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        colorGroupPanel.add(new Label("Colors:")); 
+        Panel colorGrid = createColorGrid();
+        colorGroupPanel.add(colorGrid);
+        controlsPanel.add(colorGroupPanel);
+        
+        add(controlsPanel, BorderLayout.CENTER);
+    }
+    
+    @Override
+    public void toolChanged(Tool newTool) {
+        // Show/hide the text panel based on the selected tool
+        boolean isTextTool = (newTool == Tool.TEXT);
+        
+        if (textPanel.isVisible() != isTextTool) {
+            textPanel.setVisible(isTextTool);
+            getParent().validate();
+        }
+    }
+    
+    private Button createButton(String label, ActionListener listener) {
+        Button b = new Button(label);
+        b.addActionListener(listener);
+        return b;
+    }
+    
+    private Panel createLabeledChoicePanel(String labelText, List<?> items, String defaultItem, java.util.function.Consumer<String> action) {
+        Panel p = new Panel(new FlowLayout(FlowLayout.LEFT, 2, 0)); 
+        p.add(new Label(labelText));
+        Choice choice = new Choice();
+        for (Object item : items) {
+            choice.add(String.valueOf(item));
+        }
+        try { choice.select(defaultItem); } catch (Exception ignored) {}
+        choice.addItemListener(e -> action.accept(choice.getSelectedItem()));
+        p.add(choice);
+        return p;
+    }
+    
+    private void handleSave() {
+        // Need to find the main Frame from the parent chain
+        Frame mainFrame = null;
+        Component current = getParent();
+        while (current != null) {
+            if (current instanceof Frame) {
+                mainFrame = (Frame) current;
+                break;
+            }
+            current = current.getParent();
         }
 
-        // --- Actions
-        Button newBtn = new Button("New");
-        newBtn.addActionListener(e -> canvas.newFile());
-        add(newBtn);
+        if (mainFrame == null) return;
 
-        Button saveBtn = new Button("Save");
-        saveBtn.addActionListener(e -> {
-            FileDialog fd = new FileDialog((Frame) getParent().getParent(), "Save image", FileDialog.SAVE);
-            fd.setFile("image.png");
-            fd.setVisible(true);
-            String dir = fd.getDirectory(), file = fd.getFile();
-            if (dir != null && file != null) {
-                try { canvas.saveToFile(new File(dir, file)); } catch (Exception ex) { ex.printStackTrace(); }
-            }
-        });
-        add(saveBtn);
+        FileDialog fd = new FileDialog(mainFrame, "Save image", FileDialog.SAVE);
+        fd.setFile("image.png");
+        fd.setVisible(true);
+        String dir = fd.getDirectory(), file = fd.getFile();
+        if (dir != null && file != null) {
+            try { canvas.saveToFile(new File(dir, file)); } catch (Exception ex) { ex.printStackTrace(); }
+        }
+    }
 
-        Button undoBtn = new Button("Undo");
-        undoBtn.addActionListener(e -> canvas.undo());
-        add(undoBtn);
-
-        Button redoBtn = new Button("Redo");
-        redoBtn.addActionListener(e -> canvas.redo());
-        add(redoBtn);
-
-        Button clearBtn = new Button("Clear");
-        clearBtn.addActionListener(e -> canvas.clearCanvas());
-        add(clearBtn);
-
-        // --- Stroke size
-        add(new Label("Stroke:"));
-        Choice sizes = new Choice();
-        List<Integer> sizeList = Arrays.asList(1, 2, 3, 5, 8, 12, 20);
-        for (Integer s : sizeList) sizes.add(String.valueOf(s));
-        sizes.select("3");
-        sizes.addItemListener(e -> canvas.setStrokeSize(Integer.parseInt(sizes.getSelectedItem())));
-        add(sizes);
-
-        // --- Font family
-        add(new Label("Font:"));
-        Choice fonts = new Choice();
-        String[] fontNames = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
-        for (int i = 0; i < Math.min(fontNames.length, 10); i++) fonts.add(fontNames[i]);
-        try { fonts.select(canvas.getFontName()); } catch (Exception ignored) {}
-        fonts.addItemListener(e -> canvas.setFontName(fonts.getSelectedItem()));
-        add(fonts);
-
-        // --- Font size
-        add(new Label("Size:"));
-        Choice fsize = new Choice();
-        for (int i = 8; i <= 48; i += 2) fsize.add(String.valueOf(i));
-        fsize.select("24");
-        fsize.addItemListener(e -> canvas.setFontSize(Integer.parseInt(fsize.getSelectedItem())));
-        add(fsize);
-
-        // --- Text to place
-        add(new Label("Text:"));
-        TextField tf = new TextField("Hello", 8); 
-        tf.addTextListener(e -> canvas.setText(tf.getText()));
-        add(tf);
-
-        // --- Color swatches
-        add(new Label("Colors:"));
+    private Panel createColorGrid() {
         Panel colorGrid = new Panel(new GridLayout(2, 25, 2, 2));
         Color[] swatches = {
             Color.BLACK, Color.DARK_GRAY, Color.GRAY, Color.LIGHT_GRAY, new Color(220,220,220), Color.WHITE,
@@ -105,6 +130,6 @@ public class ToolbarPanel extends Panel {
             cb.addActionListener(e -> canvas.setColor(c));
             colorGrid.add(cb);
         }
-        add(colorGrid);
+        return colorGrid;
     }
 }

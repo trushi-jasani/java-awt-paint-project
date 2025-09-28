@@ -1,5 +1,3 @@
-// src/com/paintapp/ImageUtils.java (Corrected content)
-
 package com.paintapp;
 
 import java.awt.image.BufferedImage;
@@ -10,15 +8,11 @@ import java.util.Queue;
 public class ImageUtils {
     
     public static BufferedImage deepCopy(BufferedImage bi) {
-        // ... (Your implementation)
         BufferedImage copy = new BufferedImage(bi.getWidth(), bi.getHeight(), bi.getType());
         copy.setData(bi.getData());
         return copy;
     }
 
-    /**
-     * Performs an iterative (Queue-based) flood fill.
-     */
     public static void floodFill(BufferedImage image, int x, int y, int newRgb) {
         int width = image.getWidth();
         int height = image.getHeight();
