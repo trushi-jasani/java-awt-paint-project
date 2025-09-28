@@ -14,7 +14,7 @@ public class Main {
         frame.add(toolbar, BorderLayout.NORTH);
         frame.add(canvas, BorderLayout.CENTER);
 
-        // ✅ Frame size matches canvas + toolbar automatically
+        // Frame size matches canvas + toolbar automatically
         frame.pack();
         frame.setResizable(true);
         frame.setVisible(true);

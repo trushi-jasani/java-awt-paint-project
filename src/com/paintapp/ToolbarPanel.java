@@ -81,7 +81,7 @@ public class ToolbarPanel extends Panel {
 
         // --- Text to place
         add(new Label("Text:"));
-        TextField tf = new TextField("Hello", 8); // ✅ fixed short width
+        TextField tf = new TextField("Hello", 8); 
         tf.addTextListener(e -> canvas.setText(tf.getText()));
         add(tf);
 

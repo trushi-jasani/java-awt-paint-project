@@ -1,34 +1,65 @@
+// src/com/paintapp/ImageUtils.java (Corrected content)
+
 package com.paintapp;
 
 import java.awt.image.BufferedImage;
-import java.awt.Graphics2D;
+import java.awt.Point;
+import java.util.LinkedList;
+import java.util.Queue;
 
 public class ImageUtils {
-    public static BufferedImage deepCopy(BufferedImage src) {
-        if (src == null) return null;
-        BufferedImage copy = new BufferedImage(src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = copy.createGraphics();
-        g.drawImage(src, 0, 0, null);
-        g.dispose();
+    
+    public static BufferedImage deepCopy(BufferedImage bi) {
+        // ... (Your implementation)
+        BufferedImage copy = new BufferedImage(bi.getWidth(), bi.getHeight(), bi.getType());
+        copy.setData(bi.getData());
         return copy;
     }
 
-    public static void floodFill(BufferedImage img, int startX, int startY, int targetColorARGB) {
-        int width = img.getWidth(), height = img.getHeight();
-        int baseColor = img.getRGB(startX, startY);
-        if (baseColor == targetColorARGB) return;
-        java.util.ArrayDeque<int[]> stack = new java.util.ArrayDeque<>();
-        stack.push(new int[]{startX, startY});
-        while (!stack.isEmpty()) {
-            int[] p = stack.pop();
-            int x = p[0], y = p[1];
-            if (x < 0 || x >= width || y < 0 || y >= height) continue;
-            if (img.getRGB(x, y) != baseColor) continue;
-            img.setRGB(x, y, targetColorARGB);
-            stack.push(new int[]{x+1,y});
-            stack.push(new int[]{x-1,y});
-            stack.push(new int[]{x,y+1});
-            stack.push(new int[]{x,y-1});
+    /**
+     * Performs an iterative (Queue-based) flood fill.
+     */
+    public static void floodFill(BufferedImage image, int x, int y, int newRgb) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+        
+        int targetRgb;
+        try {
+            targetRgb = image.getRGB(x, y);
+        } catch (ArrayIndexOutOfBoundsException e) {
+            return;
+        }
+
+        if (targetRgb == newRgb) {
+            return;
+        }
+
+        Queue<Point> queue = new LinkedList<>();
+        queue.add(new Point(x, y));
+        
+        int[] dx = {0, 0, 1, -1};
+        int[] dy = {1, -1, 0, 0};
+
+        while (!queue.isEmpty()) {
+            Point current = queue.poll();
+            int curX = current.x;
+            int curY = current.y;
+
+            if (curX >= 0 && curX < width && curY >= 0 && curY < height && image.getRGB(curX, curY) == targetRgb) {
+                
+                image.setRGB(curX, curY, newRgb);
+
+                for (int i = 0; i < 4; i++) {
+                    int nextX = curX + dx[i];
+                    int nextY = curY + dy[i];
+                    
+                    if (nextX >= 0 && nextX < width && nextY >= 0 && nextY < height) {
+                        if (image.getRGB(nextX, nextY) == targetRgb) {
+                            queue.add(new Point(nextX, nextY));
+                        }
+                    }
+                }
+            }
         }
     }
 }

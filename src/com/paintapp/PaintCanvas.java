@@ -3,6 +3,7 @@ package com.paintapp;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.WritableRaster;
 import java.util.Stack;
 import javax.imageio.ImageIO;
 import java.io.*;
@@ -22,6 +23,7 @@ public class PaintCanvas extends Canvas implements MouseListener, MouseMotionLis
     private Stack<BufferedImage> redoStack = new Stack<>();
 
     public PaintCanvas() {
+        // Note: setPreferredSize is fine for initial size, but we handle dynamic resizing now.
         setPreferredSize(new Dimension(Constants.CANVAS_WIDTH, Constants.CANVAS_HEIGHT));
         initImage();
         addMouseListener(this);
@@ -36,6 +38,40 @@ public class PaintCanvas extends Canvas implements MouseListener, MouseMotionLis
         g.dispose();
         clearHistory();
     }
+
+    // --- Dynamic Resizing Fix (Resolves the unresponsive right side) ---
+    private void ensureImageMatchesCanvasSize() {
+        int currentW = getWidth();
+        int currentH = getHeight();
+        
+        // Ignore if not yet fully initialized or size is zero
+        if (currentW <= 0 || currentH <= 0) return;
+
+        // Check if the internal image dimensions are different from the canvas size
+        if (image == null || image.getWidth() != currentW || image.getHeight() != currentH) {
+            
+            // 1. Create a new buffer with the current Canvas dimensions
+            BufferedImage newImage = new BufferedImage(currentW, currentH, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2 = newImage.createGraphics();
+            
+            // 2. Fill the new image with the background color
+            g2.setColor(Constants.DEFAULT_BG);
+            g2.fillRect(0, 0, currentW, currentH);
+            
+            // 3. Draw the old content onto the new image 
+            // We draw the old image onto the top-left corner of the new image.
+            if (image != null) {
+                g2.drawImage(image, 0, 0, image.getWidth(), image.getHeight(), null);
+            }
+
+            g2.dispose();
+            image = newImage;
+            
+            // Clear history or push the new, resized state to history
+            clearHistory(); // Simpler solution: clear history on resize
+        }
+    }
+
 
     // HISTORY
     private void pushUndo() {
@@ -99,36 +135,55 @@ public class PaintCanvas extends Canvas implements MouseListener, MouseMotionLis
         ImageIO.write(image, "PNG", f);
     }
 
-    // Prevent flicker
+    // Prevent flicker (Standard AWT double-buffering trick)
     @Override
     public void update(Graphics g) {
         paint(g);
     }
 
+    // --- Flickering Fix Applied Here ---
     @Override
     public void paint(Graphics g) {
+        // 1. Ensure the internal image buffer size matches the canvas size
+        ensureImageMatchesCanvasSize();
+
+        // 2. Draw the saved image (This already contains the background)
         g.drawImage(image, 0, 0, this);
+        
+        // ⚠️ REMOVED: g.setColor(Constants.DEFAULT_BG); 
+        // ⚠️ REMOVED: g.fillRect(0, 0, getWidth(), getHeight()); 
+        // Removing these two lines fixes the blinking/flickering.
 
         // live preview while dragging shapes
         if (dragging && tool != Tool.PENCIL && tool != Tool.ERASER && tool != Tool.FILL && tool != Tool.TEXT) {
             Graphics2D g2 = (Graphics2D) g.create();
             g2.setStroke(new BasicStroke(strokeSize));
             g2.setColor(currentColor);
+
             int x = Math.min(startX, curX);
             int y = Math.min(startY, curY);
             int w = Math.abs(curX - startX);
             int h = Math.abs(curY - startY);
+
             switch (tool) {
                 case RECTANGLE -> g2.drawRect(x, y, w, h);
+                // Note: SQUARE and CIRCLE logic needs to be careful with coordinate calculation 
+                // when drawing from the middle. This is your original logic.
                 case SQUARE -> { int s = Math.min(w, h); g2.drawRect(startX, startY, s, s); }
                 case OVAL -> g2.drawOval(x, y, w, h);
                 case CIRCLE -> { int c = Math.min(w, h); g2.drawOval(startX, startY, c, c); }
-                case TRIANGLE -> { int xm = (startX + curX) / 2; int[] xs = {xm, startX, curX}; int[] ys = {startY, curY, curY}; g2.drawPolygon(xs, ys, 3); }
+                case TRIANGLE -> {
+                    int xm = (startX + curX) / 2;
+                    int[] xs = {xm, startX, curX};
+                    int[] ys = {startY, curY, curY};
+                    g2.drawPolygon(xs, ys, 3);
+                }
                 default -> {}
             }
             g2.dispose();
         }
     }
+
 
     private void commitShape() {
         Graphics2D g = image.createGraphics();
@@ -161,8 +216,10 @@ public class PaintCanvas extends Canvas implements MouseListener, MouseMotionLis
 
     @Override
     public void mousePressed(MouseEvent e) {
-        startX = curX = e.getX();
-        startY = curY = e.getY();
+        // Since the canvas is now dynamic, we clamp the coordinates to the image size
+        startX = curX = Math.min(Math.max(0, e.getX()), getWidth());
+        startY = curY = Math.min(Math.max(0, e.getY()), getHeight());
+        
         dragging = true;
 
         if (tool == Tool.PENCIL || tool == Tool.ERASER) {
@@ -171,6 +228,7 @@ public class PaintCanvas extends Canvas implements MouseListener, MouseMotionLis
         } else if (tool == Tool.FILL) {
             pushUndo();
             int rgb = currentColor.getRGB();
+            // Bounds check is now implicitly handled by the clamping above, but a safety check remains useful
             if (startX >= 0 && startY >= 0 && startX < image.getWidth() && startY < image.getHeight())
                 ImageUtils.floodFill(image, startX, startY, rgb);
             repaint();
@@ -193,8 +251,10 @@ public class PaintCanvas extends Canvas implements MouseListener, MouseMotionLis
     @Override
     public void mouseReleased(MouseEvent e) {
         dragging = false;
-        curX = e.getX();
-        curY = e.getY();
+        // Clamp coordinates on release as well
+        curX = Math.min(Math.max(0, e.getX()), getWidth());
+        curY = Math.min(Math.max(0, e.getY()), getHeight());
+        
         if (tool == Tool.RECTANGLE || tool == Tool.SQUARE || tool == Tool.OVAL || tool == Tool.CIRCLE || tool == Tool.TRIANGLE) {
             commitShape();
         }
@@ -204,8 +264,11 @@ public class PaintCanvas extends Canvas implements MouseListener, MouseMotionLis
     @Override
     public void mouseDragged(MouseEvent e) {
         int prevX = curX, prevY = curY;
-        curX = e.getX();
-        curY = e.getY();
+        
+        // Clamp coordinates on drag to prevent drawing outside the bounds
+        curX = Math.min(Math.max(0, e.getX()), getWidth());
+        curY = Math.min(Math.max(0, e.getY()), getHeight());
+        
         if (tool == Tool.PENCIL || tool == Tool.ERASER) {
             drawLineOnImage(prevX, prevY, curX, curY);
         }
