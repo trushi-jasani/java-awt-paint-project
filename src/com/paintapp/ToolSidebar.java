@@ -5,7 +5,7 @@ import java.awt.event.*;
 
 public class ToolSidebar extends Panel {
     
-    private static final Color SIDEBAR_BG = new Color(220, 230, 255); 
+    private static final Color SIDEBAR_BG = new Color(255,255, 255); 
 
     public ToolSidebar(PaintCanvas canvas) {
         

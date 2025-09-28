@@ -9,7 +9,7 @@ import java.util.List;
 public class ToolbarPanel extends Panel implements PaintCanvas.ToolChangeListener {
     private final PaintCanvas canvas;
     private Panel textPanel; 
-    private static final Color TOOLBAR_BG = new Color(173, 216, 230); 
+    private static final Color TOOLBAR_BG = new Color(229, 228, 226); 
 
     public ToolbarPanel(PaintCanvas canvas) {
         this.canvas = canvas;
@@ -71,6 +71,8 @@ public class ToolbarPanel extends Panel implements PaintCanvas.ToolChangeListene
     
     private Button createButton(String label, ActionListener listener) {
         Button b = new Button(label);
+        //b.setBackground(new Color(229, 242, 201));
+        b.setForeground(Color.BLACK);
         b.addActionListener(listener);
         return b;
     }
