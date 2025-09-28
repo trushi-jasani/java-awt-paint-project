@@ -20,18 +20,23 @@ This application provides the fundamental tools needed for basic image creation 
 
 ---
 
-## 🛠️ Technical Deep Dive
+### 🖌️ Drawing and Creation
 
-During development, two common challenges inherent to Java AWT were identified and solved:
+| Feature           | Description                                                                         |
+| :---------------- | :---------------------------------------------------------------------------------- |
+| **Pen & Eraser**  | Freehand drawing and line erasing with **adjustable stroke sizes**.                 |
+| **Shapes**        | Dedicated tools for drawing **Rectangles, Squares, Ovals, Circles, and Triangles**. |
+| **Fill Tool**     | Classic **Flood Fill** algorithm to quickly color enclosed shapes.                  |
+| **Text Tool**     | Add text to your canvas with customizable **font family, size, and style**.         |
+| **Color Palette** | A wide selection of **color swatches** for quick color changes.                     |
 
-1.  **Flickering Reduction (Double Buffering)**
+### 💾 Editing and Management
 
-    - **Problem:** Excessive blinking occurred during drawing operations due to the screen being cleared and redrawn multiple times in sequence.
-    - **Solution:** Implemented the standard AWT double-buffering technique by overriding the `update(Graphics g)` method in `PaintCanvas.java`. This ensures all drawing is done to an off-screen buffer before being painted to the screen in a single, smooth operation.
-
-2.  **Input & Resizing Stability**
-    - **Problem:** The right side of the drawing canvas became unresponsive to mouse input after resizing the application window.
-    - **Solution:** Introduced the `ensureImageMatchesCanvasSize()` mechanism in `PaintCanvas.java`. This dynamically resizes the internal `BufferedImage` (the drawing buffer) whenever the AWT Canvas component changes size, ensuring the entire visible area is active and drawable.
+| Feature          | Description                                                                      |
+| :--------------- | :------------------------------------------------------------------------------- |
+| **Undo/Redo**    | Full history stack management to safely **revert or restore** your last actions. |
+| **Clear Canvas** | Quick function to reset the canvas to a clean slate.                             |
+| **Save**         | Export your artwork as a standard **PNG image file**.                            |
 
 ---
 
@@ -47,7 +52,7 @@ These instructions will get you a copy of the project up and running on your loc
 
 1.  **Clone the repository:**
     ```bash
-    git clone [Your Repository URL]
+    git clone https://github.com/trushi-jasani/java-awt-paint-project.git
     ```
 2.  **Compile the source files:**
     Navigate to the project's source directory (e.g., `src/com/paintapp`) and compile the Java files.
@@ -74,7 +79,8 @@ These instructions will get you a copy of the project up and running on your loc
 
 ---
 
-## ✍️ Author
+## 📧 Contact
 
-- **[Your Name / GitHub Username]** - _Initial development_
-  - [Link to your GitHub profile or Portfolio]
+💁‍♀️ **Author:** Trushi Jasani  
+📩 **Email:** jasanitrushi@gmail.com  
+🔗 **GitHub:** [trushi-jasani](https://github.com/trushi-jasani)
