@@ -9,99 +9,136 @@ import java.util.List;
 public class ToolbarPanel extends Panel implements PaintCanvas.ToolChangeListener {
     private final PaintCanvas canvas;
     private Panel textPanel; 
+    private TextField textField;
     private static final Color TOOLBAR_BG = new Color(229, 228, 226); 
 
     public ToolbarPanel(PaintCanvas canvas) {
         this.canvas = canvas;
 
+        // Main panel layout
         setLayout(new BorderLayout());
         setBackground(TOOLBAR_BG); 
-        setPreferredSize(new Dimension(Constants.CANVAS_WIDTH, 70));
+        setPreferredSize(new Dimension(Constants.CANVAS_WIDTH, 80)); 
 
-        Panel controlsPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 6, 6));
-        controlsPanel.setBackground(TOOLBAR_BG); 
+        // -----------------------------------------------------
+        // LEFT CONTROLS PANEL
+        // -----------------------------------------------------
+        Panel leftControlsPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 4, 4));
+        leftControlsPanel.setBackground(TOOLBAR_BG); 
 
-        // --- A. Actions Group ---
-        controlsPanel.add(createButton("New", e -> canvas.newFile()));
-        controlsPanel.add(createButton("Save", e -> handleSave()));
-        controlsPanel.add(createButton("Undo", e -> canvas.undo()));
-        controlsPanel.add(createButton("Redo", e -> canvas.redo()));
-        controlsPanel.add(createButton("Clear", e -> canvas.clearCanvas()));
-        
-        // --- B. Grouped Controls (Stroke, Font, Size) ---
-        controlsPanel.add(createLabeledChoicePanel("Stroke:", Arrays.asList(1, 2, 3, 5, 8, 12, 20), "3", size -> canvas.setStrokeSize(Integer.parseInt(size))));
-        
+        // Action buttons
+        leftControlsPanel.add(createSelectableButton("New", e -> canvas.newFile()));
+        leftControlsPanel.add(createSelectableButton("Save", e -> handleSave()));
+        leftControlsPanel.add(createSelectableButton("Undo", e -> canvas.undo()));
+        leftControlsPanel.add(createSelectableButton("Redo", e -> canvas.redo()));
+        leftControlsPanel.add(createSelectableButton("Clear", e -> canvas.clearCanvas()));
+
+        // Stroke size dropdown
+        leftControlsPanel.add(createLabeledChoicePanel("Stroke:", Arrays.asList(1, 2, 3, 5, 8, 12, 20 , 26 , 30 , 40), "3", size -> canvas.setStrokeSize(Integer.parseInt(size))));
+
+        // Font family dropdown
         String[] fontNames = GraphicsEnvironment.getLocalGraphicsEnvironment().getAvailableFontFamilyNames();
         List<String> fontList = Arrays.asList(Arrays.copyOf(fontNames, Math.min(fontNames.length, 10)));
-        controlsPanel.add(createLabeledChoicePanel("Font:", fontList, canvas.getFontName(), canvas::setFontName));
+        leftControlsPanel.add(createLabeledChoicePanel("Font:", fontList, canvas.getFontName(), canvas::setFontName));
 
+        // Font size dropdown
         List<String> fSizeList = new java.util.ArrayList<>();
         for (int i = 8; i <= 48; i += 2) fSizeList.add(String.valueOf(i));
-        controlsPanel.add(createLabeledChoicePanel("Size:", fSizeList, "24", size -> canvas.setFontSize(Integer.parseInt(size))));
+        leftControlsPanel.add(createLabeledChoicePanel("Size:", fSizeList, "24", size -> canvas.setFontSize(Integer.parseInt(size))));
 
-        // --- C. Text Field Group ---
-        textPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 2, 0));
+        // Text input
+        textPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 1, 0));
         textPanel.add(new Label("Text:"));
-        TextField tf = new TextField("Hello", 8);
-        tf.addTextListener(e -> canvas.setText(tf.getText()));
-        textPanel.add(tf);
-        controlsPanel.add(textPanel);
-        textPanel.setVisible(false); // Hidden by default
+        textField = new TextField("Enter text", 5);
+        canvas.setText(textField.getText());
+        textField.addTextListener(e -> canvas.setText(textField.getText()));
+        textPanel.add(textField);
+        leftControlsPanel.add(textPanel); 
+        
+        add(leftControlsPanel, BorderLayout.WEST);
 
-        // --- D. Color Swatches ---
+        // -----------------------------------------------------
+        // RIGHT CONTROLS PANEL (Color swatches)
+        // -----------------------------------------------------
+        Panel rightControlsPanel = new Panel(new FlowLayout(FlowLayout.RIGHT, 4, 4));
+        rightControlsPanel.setBackground(TOOLBAR_BG); 
+
         Panel colorGroupPanel = new Panel(new FlowLayout(FlowLayout.LEFT, 2, 0));
-        colorGroupPanel.add(new Label("Colors:")); 
+        colorGroupPanel.add(new Label("Color:")); 
         Panel colorGrid = createColorGrid();
         colorGroupPanel.add(colorGrid);
-        controlsPanel.add(colorGroupPanel);
         
-        add(controlsPanel, BorderLayout.CENTER);
+        rightControlsPanel.add(colorGroupPanel); 
+        add(rightControlsPanel, BorderLayout.EAST);
     }
-    
+
     @Override
-    public void toolChanged(Tool newTool) {
-        // Show/hide the text panel based on the selected tool
-        boolean isTextTool = (newTool == Tool.TEXT);
-        
-        if (textPanel.isVisible() != isTextTool) {
-            textPanel.setVisible(isTextTool);
-            getParent().validate();
-        }
-    }
-    
-    private Button createButton(String label, ActionListener listener) {
+    public void toolChanged(Tool newTool) {}
+
+    // ----------------------
+    // Buttons
+    // ----------------------
+    private Button createSelectableButton(String label, ActionListener listener) {
         Button b = new Button(label);
-        //b.setBackground(new Color(229, 242, 201));
         b.setForeground(Color.BLACK);
-        b.addActionListener(listener);
+        b.setBackground(new Color(245, 245, 245));
+
+        b.addActionListener(e -> {
+            Color original = b.getBackground();
+            b.setBackground(new Color(255, 245, 160)); // flash
+            listener.actionPerformed(e);
+
+            new Thread(() -> {
+                try { Thread.sleep(150); } catch (InterruptedException ignored) {}
+                EventQueue.invokeLater(() -> b.setBackground(original));
+            }).start();
+        });
+
+        b.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseEntered(MouseEvent e) {
+                if (b.getBackground().equals(new Color(245, 245, 245))) {
+                    b.setBackground(new Color(230, 230, 230));
+                }
+            }
+            @Override
+            public void mouseExited(MouseEvent e) {
+                b.setBackground(new Color(245, 245, 245));
+            }
+        });
+
         return b;
     }
-    
+
+    // ----------------------
+    // Labeled Choice Panel (compact)
+    // ----------------------
     private Panel createLabeledChoicePanel(String labelText, List<?> items, String defaultItem, java.util.function.Consumer<String> action) {
-        Panel p = new Panel(new FlowLayout(FlowLayout.LEFT, 2, 0)); 
-        p.add(new Label(labelText));
+        Panel p = new Panel(new FlowLayout(FlowLayout.LEFT, 1, 0)); // horizontal gap reduced
+        Label lbl = new Label(labelText);
+        lbl.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        p.add(lbl);
+
         Choice choice = new Choice();
-        for (Object item : items) {
-            choice.add(String.valueOf(item));
-        }
+        choice.setFont(new Font("Segoe UI", Font.PLAIN, 13));
+        for (Object item : items) choice.add(String.valueOf(item));
         try { choice.select(defaultItem); } catch (Exception ignored) {}
         choice.addItemListener(e -> action.accept(choice.getSelectedItem()));
         p.add(choice);
+
         return p;
     }
-    
+
+    // ----------------------
+    // Save handler
+    // ----------------------
     private void handleSave() {
-        // Need to find the main Frame from the parent chain
         Frame mainFrame = null;
         Component current = getParent();
         while (current != null) {
-            if (current instanceof Frame) {
-                mainFrame = (Frame) current;
-                break;
-            }
+            if (current instanceof Frame) { mainFrame = (Frame) current; break; }
             current = current.getParent();
         }
-
         if (mainFrame == null) return;
 
         FileDialog fd = new FileDialog(mainFrame, "Save image", FileDialog.SAVE);
@@ -113,6 +150,9 @@ public class ToolbarPanel extends Panel implements PaintCanvas.ToolChangeListene
         }
     }
 
+    // ----------------------
+    // Color grid
+    // ----------------------
     private Panel createColorGrid() {
         Panel colorGrid = new Panel(new GridLayout(2, 25, 2, 2));
         Color[] swatches = {
